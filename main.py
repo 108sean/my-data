@@ -95,6 +95,63 @@ filtered_df = yearly_df[
 ].copy()
 
 # -----------------------------------------------------------------------------
+# 원본 데이터 요약 통계 섹션 (상단 배치)
+# -----------------------------------------------------------------------------
+st.subheader("📌 원본 데이터 요약 통계")
+
+col_stat1, col_stat2 = st.columns(2)
+
+with col_stat1:
+    st.markdown("##### 📅 일별 원본 데이터 요약 통계 (전체 기간)")
+    raw_stats = raw_df[['평균기온', '최저기온', '최고기온']].describe().T
+    raw_stats = raw_stats.rename(columns={
+        'count': '개수',
+        'mean': '평균',
+        'std': '표준편차',
+        'min': '최소',
+        '25%': '25%',
+        '50%': '중앙값',
+        '75%': '75%',
+        'max': '최대'
+    })
+    st.dataframe(raw_stats.style.format({
+        '개수': '{:,.0f}',
+        '평균': '{:.2f} °C',
+        '표준편차': '{:.2f}',
+        '최소': '{:.1f} °C',
+        '25%': '{:.1f} °C',
+        '중앙값': '{:.1f} °C',
+        '75%': '{:.1f} °C',
+        '최대': '{:.1f} °C'
+    }), use_container_width=True)
+
+with col_stat2:
+    st.markdown(f"##### 🗓️ 선택 구간({selected_years[0]}년 ~ {selected_years[1]}년) 연도별 요약 통계")
+    yearly_stats = filtered_df[['평균기온', '최저기온', '최고기온']].describe().T
+    yearly_stats = yearly_stats.rename(columns={
+        'count': '개수',
+        'mean': '평균',
+        'std': '표준편차',
+        'min': '최소',
+        '25%': '25%',
+        '50%': '중앙값',
+        '75%': '75%',
+        'max': '최대'
+    })
+    st.dataframe(yearly_stats.style.format({
+        '개수': '{:,.0f}',
+        '평균': '{:.2f} °C',
+        '표준편차': '{:.2f}',
+        '최소': '{:.1f} °C',
+        '25%': '{:.1f} °C',
+        '중앙값': '{:.1f} °C',
+        '75%': '{:.1f} °C',
+        '최대': '{:.1f} °C'
+    }), use_container_width=True)
+
+st.markdown("---")
+
+# -----------------------------------------------------------------------------
 # 요약 지표 (Metrics)
 # -----------------------------------------------------------------------------
 st.subheader("📊 주요 기온 지표 요약")
@@ -138,7 +195,7 @@ with col4:
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 메인 그래프 시각화 (Plotly) - 깔끔하게 연평균 기온만 표시
+# 메인 그래프 시각화 (Plotly)
 # -----------------------------------------------------------------------------
 st.subheader("📉 연도별 연평균 기온 추이")
 
@@ -166,41 +223,11 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# 추가 분석 Tab (요약 통계 및 원본 데이터 포함)
+# 추가 분석 Tab
 # -----------------------------------------------------------------------------
-tab1, tab2, tab3 = st.tabs(["📊 원본데이터 요약 통계", "🌡️ 연간 극값(최고/최저) 비교", "📋 연도별 데이터 확인"])
+tab1, tab2 = st.tabs(["🌡️ 연간 극값(최고/최저) 비교", "📋 연도별 원본/집계 데이터"])
 
 with tab1:
-    st.markdown("#### 1️⃣ 일별 원본 데이터 요약 통계")
-    raw_stats = raw_df[['평균기온', '최저기온', '최고기온']].describe().T
-    raw_stats = raw_stats.rename(columns={
-        'count': '데이터 수',
-        'mean': '평균',
-        'std': '표준편차',
-        'min': '최소값',
-        '25%': '1사분위(25%)',
-        '50%': '중앙값(50%)',
-        '75%': '3사분위(75%)',
-        'max': '최대값'
-    })
-    st.dataframe(raw_stats.style.format('{:.2f}'), use_container_width=True)
-
-    st.markdown("---")
-    st.markdown(f"#### 2️⃣ 선택된 구간({selected_years[0]}년 ~ {selected_years[1]}년) 연평균 요약 통계")
-    yearly_stats = filtered_df[['평균기온', '최저기온', '최고기온']].describe().T
-    yearly_stats = yearly_stats.rename(columns={
-        'count': '연도 수',
-        'mean': '평균',
-        'std': '표준편차',
-        'min': '최소값',
-        '25%': '1사분위(25%)',
-        '50%': '중앙값(50%)',
-        '75%': '3사분위(75%)',
-        'max': '최대값'
-    })
-    st.dataframe(yearly_stats.style.format('{:.2f}'), use_container_width=True)
-
-with tab2:
     fig_ext = go.Figure()
     fig_ext.add_trace(go.Scatter(
         x=filtered_df['연도'], y=filtered_df['최고기온'],
@@ -219,7 +246,7 @@ with tab2:
     )
     st.plotly_chart(fig_ext, use_container_width=True)
 
-with tab3:
+with tab2:
     st.dataframe(
         filtered_df[['연도', '평균기온', '최저기온', '최고기온', '일수']].style.format({
             '평균기온': '{:.2f} °C',
