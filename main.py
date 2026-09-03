@@ -174,7 +174,7 @@ if ma_window > 1:
         mode='lines',
         name=f'{ma_window}년 이동평균',
         line=dict(color='#2980B9', width=3, dash='dash'),
-        hovertemplate='%{x}년 (%d년 평균): %%{y:.2f} °C' % ma_window
+        hovertemplate=f'%{{x}}년 ({ma_window}년 평균): %{{y:.2f}} °C'
     ))
 
 fig.update_layout(
