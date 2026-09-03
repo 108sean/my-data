@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 # -----------------------------------------------------------------------------
@@ -22,7 +21,7 @@ DATA_URL = "https://raw.githubusercontent.com/greatsong/modudata/main/data/seoul
 
 @st.cache_data
 def load_data():
-    # 인코딩 예외 처리 (cp949 / utf-8)
+    # 파일 인코딩 예외 처리 (cp949 / utf-8)
     try:
         df = pd.read_csv(DATA_URL, encoding='cp949')
     except Exception:
@@ -68,10 +67,10 @@ def load_data():
     
     yearly_df = yearly_df[yearly_df['일수'] >= 300].copy()
     
-    return yearly_df
+    return df, yearly_df
 
 with st.spinner("데이터를 불러오는 중입니다..."):
-    yearly_df = load_data()
+    raw_df, yearly_df = load_data()
 
 # -----------------------------------------------------------------------------
 # 사이드바 설정
@@ -89,23 +88,11 @@ selected_years = st.sidebar.slider(
     value=(min_year, max_year)
 )
 
-# 이동평균 선택
-ma_window = st.sidebar.selectbox(
-    "이동평균(Moving Average) 구간",
-    options=[1, 3, 5, 10],
-    index=2,
-    format_func=lambda x: "미적용 (원본 데이터)" if x == 1 else f"{x}년 이동평균"
-)
-
 # 필터링된 데이터
 filtered_df = yearly_df[
     (yearly_df['연도'] >= selected_years[0]) & 
     (yearly_df['연도'] <= selected_years[1])
 ].copy()
-
-# 이동평균 계산
-if ma_window > 1:
-    filtered_df['평균기온_이동평균'] = filtered_df['평균기온'].rolling(window=ma_window, min_periods=1).mean()
 
 # -----------------------------------------------------------------------------
 # 요약 지표 (Metrics)
@@ -151,9 +138,9 @@ with col4:
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 메인 그래프 시각화 (Plotly)
+# 메인 그래프 시각화 (Plotly) - 깔끔하게 연평균 기온만 표시
 # -----------------------------------------------------------------------------
-st.subheader("📉 연도별 연평균 기온 추이 및 추세선")
+st.subheader("📉 연도별 연평균 기온 추이")
 
 fig = go.Figure()
 
@@ -167,40 +154,53 @@ fig.add_trace(go.Scatter(
     hovertemplate='%{x}년: %{y:.2f} °C'
 ))
 
-if ma_window > 1:
-    fig.add_trace(go.Scatter(
-        x=filtered_df['연도'],
-        y=filtered_df['평균기온_이동평균'],
-        mode='lines',
-        name=f'{ma_window}년 이동평균',
-        line=dict(color='#2980B9', width=3, dash='dash'),
-        hovertemplate=f'%{{x}}년 ({ma_window}년 평균): %{{y:.2f}} °C'
-    ))
-
 fig.update_layout(
     title=f"서울 연평균 기온 변화 ({selected_years[0]}년 ~ {selected_years[1]}년)",
     xaxis_title="연도",
     yaxis_title="기온 (°C)",
     hovermode="x unified",
     template="plotly_white",
-    height=500,
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="right",
-        x=1
-    )
+    height=500
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------------------------------------------------------
-# 추가 분석 Tab
+# 추가 분석 Tab (요약 통계 및 원본 데이터 포함)
 # -----------------------------------------------------------------------------
-tab1, tab2 = st.tabs(["🌡️ 연간 극값(최고/최저) 비교", "📋 원본 데이터 확인"])
+tab1, tab2, tab3 = st.tabs(["📊 원본데이터 요약 통계", "🌡️ 연간 극값(최고/최저) 비교", "📋 연도별 데이터 확인"])
 
 with tab1:
+    st.markdown("#### 1️⃣ 일별 원본 데이터 요약 통계")
+    raw_stats = raw_df[['평균기온', '최저기온', '최고기온']].describe().T
+    raw_stats = raw_stats.rename(columns={
+        'count': '데이터 수',
+        'mean': '평균',
+        'std': '표준편차',
+        'min': '최소값',
+        '25%': '1사분위(25%)',
+        '50%': '중앙값(50%)',
+        '75%': '3사분위(75%)',
+        'max': '최대값'
+    })
+    st.dataframe(raw_stats.style.format('{:.2f}'), use_container_width=True)
+
+    st.markdown("---")
+    st.markdown(f"#### 2️⃣ 선택된 구간({selected_years[0]}년 ~ {selected_years[1]}년) 연평균 요약 통계")
+    yearly_stats = filtered_df[['평균기온', '최저기온', '최고기온']].describe().T
+    yearly_stats = yearly_stats.rename(columns={
+        'count': '연도 수',
+        'mean': '평균',
+        'std': '표준편차',
+        'min': '최소값',
+        '25%': '1사분위(25%)',
+        '50%': '중앙값(50%)',
+        '75%': '3사분위(75%)',
+        'max': '최대값'
+    })
+    st.dataframe(yearly_stats.style.format('{:.2f}'), use_container_width=True)
+
+with tab2:
     fig_ext = go.Figure()
     fig_ext.add_trace(go.Scatter(
         x=filtered_df['연도'], y=filtered_df['최고기온'],
@@ -219,7 +219,7 @@ with tab1:
     )
     st.plotly_chart(fig_ext, use_container_width=True)
 
-with tab2:
+with tab3:
     st.dataframe(
         filtered_df[['연도', '평균기온', '최저기온', '최고기온', '일수']].style.format({
             '평균기온': '{:.2f} °C',
